@@ -59,7 +59,7 @@ def insert():
         return redirect(url_for('index'))
     return render_template('insert.html')
 
-# how to find within 500 km of Arlington, TX
+# how to find within 500 km of Arlington, TX in the database querying:
 # DECLARE @lat FLOAT = 32.7357;   -- Arlington latitude
 # DECLARE @lon FLOAT = -97.1081;  -- Arlington longitude
 # DECLARE @radius FLOAT = 500;    -- km

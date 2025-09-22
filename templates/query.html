@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% block content %}
-<h2>Query Earthquakes by Magnitude</h2>
+<h2>Find Earthquakes in a Certain Magnitude Range</h2>
 <form method="post" class="row g-3">
     <input type="hidden" name="query_type" value="magnitude">
     <div class="col-md-6">
@@ -17,7 +17,7 @@
     </div>
 </form>
 <hr>
-<h2>Query Earthquakes by Location and Radius</h2>
+<h2>Find Earthquakes in a Certain Radius of Given Coordinates</h2>
 <form method="post" class="row g-3">
     <input type="hidden" name="query_type" value="location">
     <div class="col-md-4">
