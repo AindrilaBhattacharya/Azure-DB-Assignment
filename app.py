@@ -21,8 +21,8 @@ driver = '{ODBC Driver 18 for SQL Server}'
 # SQL connection
 def get_connection():
     return pyodbc.connect(
-        f'DRIVER={driver},1433;'
-        f'SERVER={server};'
+        f'DRIVER={driver};'
+        f'SERVER={server},1433;'
         f'DATABASE={database};'
         f'UID={username};'
         f'PWD={password};'
@@ -59,22 +59,67 @@ def insert():
         return redirect(url_for('index'))
     return render_template('insert.html')
 
+# how to find within 500 km of Arlington, TX
+# DECLARE @lat FLOAT = 32.7357;   -- Arlington latitude
+# DECLARE @lon FLOAT = -97.1081;  -- Arlington longitude
+# DECLARE @radius FLOAT = 500;    -- km
+
+# SELECT id, time, latitude, longitude, depth, mag, place,
+#        6371 * ACOS(
+#            COS(RADIANS(@lat)) * COS(RADIANS(latitude)) *
+#            COS(RADIANS(longitude) - RADIANS(@lon)) +
+#            SIN(RADIANS(@lat)) * SIN(RADIANS(latitude))
+#        ) AS distance_km
+# FROM Earthquakes
+# WHERE 6371 * ACOS(
+#            COS(RADIANS(@lat)) * COS(RADIANS(latitude)) *
+#            COS(RADIANS(longitude) - RADIANS(@lon)) +
+#            SIN(RADIANS(@lat)) * SIN(RADIANS(latitude))
+#        ) <= @radius;  
+
 @app.route('/query', methods=['GET', 'POST'])
 def query():
     if request.method == 'POST':
-        min_mag = request.form.get('min_mag', 0)
-        max_mag = request.form.get('max_mag', 10)
+        query_type = request.form.get('query_type')
         conn = get_connection()
+        if query_type == 'magnitude':
+            min_mag = request.form.get('min_mag', 0)
+            max_mag = request.form.get('max_mag', 10)
 
-        query = """
-                SELECT id, time, latitude, longitude, depth, mag, place
+            query = """
+                    SELECT id, time, latitude, longitude, depth, mag, place
+                    FROM Earthquakes
+                    WHERE mag BETWEEN ? AND ?
+                    ORDER BY time DESC
+                """
+            df = pd.read_sql(query, conn, params=[min_mag, max_mag])
+            
+
+        elif query_type == 'location':
+            center_lat = float(request.form.get('latitude'))
+            center_lon = float(request.form.get('longitude'))
+            radius_km = float(request.form.get('radius_km', 500))
+
+            sql = """
+                SELECT id, time, latitude, longitude, depth, mag, place,
+                       6371 * ACOS(
+                           COS(RADIANS(?)) * COS(RADIANS(latitude)) *
+                           COS(RADIANS(longitude) - RADIANS(?)) +
+                           SIN(RADIANS(?)) * SIN(RADIANS(latitude))
+                       ) AS distance_km
                 FROM Earthquakes
-                WHERE mag BETWEEN ? AND ?
+                WHERE 6371 * ACOS(
+                           COS(RADIANS(?)) * COS(RADIANS(latitude)) *
+                           COS(RADIANS(longitude) - RADIANS(?)) +
+                           SIN(RADIANS(?)) * SIN(RADIANS(latitude))
+                       ) <= ?
                 ORDER BY time DESC
             """
-        df = pd.read_sql(query, conn, params=[min_mag, max_mag])
-        conn.close()
+            params = [center_lat, center_lon, center_lat,
+                      center_lat, center_lon, center_lat, radius_km]
+            df = pd.read_sql(sql, conn, params=params)
 
+        conn.close()
         # Remove leading/trailing whitespace characters from string columns
         html_table = df.to_html(classes='table table-striped', index=False).replace('\n', '')
         return render_template('results.html', tables=[html_table], titles=df.columns.values)
@@ -106,7 +151,7 @@ def upload():
             conn.commit()
             cursor.close()
             conn.close()
-            flash('CSV data uploaded successfully (skipped blank lines)!')
+            flash('CSV data uploaded successfully (skipped blank lines and ignored duplicates)!')
             return redirect(url_for('index'))
         else:
             flash('Please upload a valid CSV file.')
