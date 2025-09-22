@@ -21,7 +21,7 @@ driver = '{ODBC Driver 18 for SQL Server}'
 # SQL connection
 def get_connection():
     return pyodbc.connect(
-        f'DRIVER={driver};'
+        f'DRIVER={driver},1433;'
         f'SERVER={server};'
         f'DATABASE={database};'
         f'UID={username};'
